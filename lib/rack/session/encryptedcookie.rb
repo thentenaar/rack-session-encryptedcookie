@@ -124,7 +124,7 @@ module Session
     def cipher(mode, str)
       return nil if @opts[:key].nil? || str.nil?
       begin
-        cipher = OpenSSL::Cipher::Cipher.new(@opts[:cipher])
+        cipher = OpenSSL::Cipher.new(@opts[:cipher])
         cipher.send(mode)
       rescue
         return cipher_failed($!.message)

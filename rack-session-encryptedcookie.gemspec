@@ -1,6 +1,6 @@
 Gem::Specification.new do |gem|
   gem.name        = 'rack-session-encryptedcookie'
-  gem.version     = '0.2.1'
+  gem.version     = '0.2.2'
   gem.author      = 'Tim Hentenaar'
   gem.email       = 'tim.hentenaar@gmail.com'
   gem.license     = 'BSD-2-Clause'

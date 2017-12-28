@@ -37,7 +37,7 @@ Just add something like this to your _config.ru_:
 ```ruby
 require 'rack/session/encryptedcookie'
 
-use Rack::Session::EncryptedCookie domain: 'domain.name', salt: 'salthere', key: 'my_secret'
+use Rack::Session::EncryptedCookie, domain: 'domain.name', salt: 'salthere', key: 'my_secret'
 ```
 
 ... and you can access the session hash via ``env['rack.session']`` per
