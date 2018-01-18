@@ -72,6 +72,7 @@ module Session
     # Load the sesssion data from the cookie
     # @return [Hash, nil] Session data
     def load_session(env)
+      @hash.clear unless @hash.empty?
       r = Rack::Request.new(env)
       cookie = r.cookies[@opts[:cookie_name]]
       return if cookie.nil?
