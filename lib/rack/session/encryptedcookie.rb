@@ -1,7 +1,7 @@
 #
 # Rack::Session::EncryptedCookie - Encrypted session middleware for Rack
 #
-# Copyright (C) 2013 - 2017 Tim Hentenaar. All Rights Reserved.
+# Copyright (C) 2013 - 2018 Tim Hentenaar. All Rights Reserved.
 #
 # Licensed under the Simplified BSD License.
 # See the LICENSE file for details.
@@ -17,28 +17,30 @@ module Session
     NOT_FOUND = [ 404, {}, [ 'Not found' ]].freeze
 
     # @param [Hash] opts Session options
-    # @option opts [String]  :cookie_name Cookie name
-    # @option opts [String]  :domain      Domain for the cookie
-    # @option opts [Boolean] :http_only   HttpOnly for the cookie
-    # @option opts [Integer] :expires     Cookie expiry (in seconds)
-    # @option opts [String]  :cipher      OpenSSL cipher to use
-    # @option opts [String]  :salt        Salt for the IV
-    # @optons opts [Integer] :rounds      Number of salting rounds
-    # @option opts [String]  :key         Encryption key for the data
-    # @option opts [Integer] :tag_len     Tag length (for GCM/CCM ciphers)
+    # @option opts [String]  :cookie_name   Cookie name
+    # @option opts [String]  :domain        Domain for the cookie
+    # @option opts [Boolean] :http_only     HttpOnly for the cookie
+    # @option opts [Integer] :expires       Cookie expiry (in seconds)
+    # @option opts [String]  :cipher        OpenSSL cipher to use
+    # @option opts [String]  :salt          Salt for the IV
+    # @optons opts [Integer] :rounds        Number of salting rounds
+    # @option opts [String]  :key           Encryption key for the data
+    # @option opts [Integer] :tag_len       Tag length (for GCM/CCM ciphers)
+    # @option opts [Boolean] :clear_cookies Clear response cookies
     def initialize(app, opts={})
       @app  = app
       @hash = {}
       @opts = {
-        cookie_name: 'rack.session',
-        domain:      nil,
-        http_only:   false,
-        expires:     (15 * 60),
-        cipher:      'aes-256-cbc',
-        salt:        '3@bG>B@J5vy-FeXJ',
-        rounds:      2000,
-        key:         'r`*BqnG:c^;AL{k97=KYN!#',
-        tag_len:     16
+        cookie_name:   'rack.session',
+        domain:        nil,
+        http_only:     false,
+        expires:       (15 * 60),
+        cipher:        'aes-256-cbc',
+        salt:          '3@bG>B@J5vy-FeXJ',
+        rounds:        2000,
+        key:           'r`*BqnG:c^;AL{k97=KYN!#',
+        tag_len:       16,
+        clear_cookies: false
       }.merge(opts)
     end
 
@@ -99,6 +101,7 @@ module Session
           c[:expires] = Time.at(Time.now + @opts[:expires])
         end
 
+        r[1]['Set-Cookie'] = nil if @opts[:clear_cookies]
         r[1]['Set-Cookie'] = Rack::Utils.add_cookie_to_header(
           r[1]['Set-Cookie'], @opts[:cookie_name], c
         ) unless data.nil?
