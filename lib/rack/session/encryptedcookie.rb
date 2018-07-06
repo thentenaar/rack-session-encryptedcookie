@@ -27,9 +27,14 @@ module Session
     # @option opts [String]  :key           Encryption key for the data
     # @option opts [Integer] :tag_len       Tag length (for GCM/CCM ciphers)
     # @option opts [Boolean] :clear_cookies Clear response cookies
+    #
+    # If :domain is nil, the Host header from the request will be
+    # used to determine the domain sent for the cookie.
+    #
     def initialize(app, opts={})
       @app  = app
       @hash = {}
+      @host = nil
       @opts = {
         cookie_name:   'rack.session',
         domain:        nil,
@@ -76,6 +81,7 @@ module Session
     def load_session(env)
       @hash.clear unless @hash.empty?
       r = Rack::Request.new(env)
+      @host = r.host if @opts[:domain].nil?
       cookie = r.cookies[@opts[:cookie_name]]
       return if cookie.nil?
       @hash = Marshal.load(cipher(:decrypt, cookie)) rescue {}
@@ -88,13 +94,18 @@ module Session
     def save_session(r)
       return r if !r.is_a?(Array) || (r.is_a?(Array) && r[0] == -1)
 
-      unless @hash.empty? || @opts[:domain].nil?
+      unless @hash.empty?
         data = cipher(:encrypt, Marshal.dump(@hash)) rescue nil
         c = {
-          value:  data,
-          domain: @opts[:domain],
-          path:   '/',
+          value: data,
+          path:  '/',
         }
+
+        if !@opts[:domain].nil?
+          c[:domain] = @opts[:domain]
+        elsif @host&.match(%r{^[a-zA-Z]})
+          c[:domain] = @host
+        end
 
         c[:httponly] = @opts[:http_only] === true
         if @opts.has_key?(:expires)

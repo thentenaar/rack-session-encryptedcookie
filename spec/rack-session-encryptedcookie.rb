@@ -11,10 +11,10 @@ describe Rack::Session::EncryptedCookie do
   end
 
   # Mock a request through the middleware
-  def response(app, opts={})
-    app = Rack::Session::EncryptedCookie.new(app, {
-      domain: 'localhost'
-    })
+  def response(app, dom='localhost', opts={})
+    o = {}
+    o[:domain] = dom unless dom.nil?
+    app = Rack::Session::EncryptedCookie.new(app, o)
     Rack::MockRequest.new(app).get('/', opts.merge(lint: true))
   end
 
@@ -40,7 +40,7 @@ describe Rack::Session::EncryptedCookie do
 
   it 'calls async.callback' do
     expect(NOT_FOUND_CALLBACK).to receive(:call).and_return(NOT_FOUND)
-    response(nil, { 'async.callback' => NOT_FOUND_CALLBACK })
+    response(nil, 'localhost', { 'async.callback' => NOT_FOUND_CALLBACK })
   end
 
   it 'overrides async.callback' do
@@ -50,7 +50,7 @@ describe Rack::Session::EncryptedCookie do
     end
 
     expect(app).to receive(:call).and_return(NOT_FOUND)
-    response(app, { 'async.callback' => NOT_FOUND_CALLBACK })
+    response(app, 'localhost', { 'async.callback' => NOT_FOUND_CALLBACK })
   end
 
   it 'is env[\'rack.session\']' do
@@ -87,16 +87,48 @@ describe Rack::Session::EncryptedCookie do
     cookie = 'rack.session=' +
              'e7eibXYTy%2BSTQJLyfljf2XK1QT2VL7mYNYEsy1KYzd8%3D; ' +
              'domain=localhost; path=/; HttpOnly'
-    r = response(app, { 'HTTP_COOKIE' => cookie })
+    r = response(app, 'localhost', { 'HTTP_COOKIE' => cookie })
     expect(r['Set-Cookie']).not_to be_nil
     expect(r['Set-Cookie']).not_to be(cookie)
   end
 
-  it 'warns on an unknown cipher' do
-    sess = Rack::Session::EncryptedCookie.new(nil, {
-      domain: 'localhost',
-      cipher: 'xxx'
+  it 'uses the Host header from the request' do
+     app = lambda do |env|
+      expect(env['rack.session'][:test]).to eq(1)
+      NOT_FOUND
+    end
+
+    cookie = 'rack.session=' +
+             'e7eibXYTy%2BSTQJLyfljf2XK1QT2VL7mYNYEsy1KYzd8%3D; ' +
+             'domain=localhost; path=/; HttpOnly'
+    r = response(app, nil, {
+      'HTTP_COOKIE' => cookie,
+      'HTTP_HOST'   => 'myhost'
     })
+    expect(r['Set-Cookie']).not_to be_nil
+    expect(r['Set-Cookie']).to match(%r{domain=myhost;})
+  end
+
+  it 'doesn\'t the Host header if it doesn\'t begin with a letter' do
+     app = lambda do |env|
+      expect(env['rack.session'][:test]).to eq(1)
+      NOT_FOUND
+    end
+
+    cookie = 'rack.session=' +
+             'e7eibXYTy%2BSTQJLyfljf2XK1QT2VL7mYNYEsy1KYzd8%3D; ' +
+             'domain=localhost; path=/; HttpOnly'
+    r = response(app, nil, {
+      'HTTP_COOKIE' => cookie,
+      'HTTP_HOST'   => '127.0.0.1'
+    })
+    expect(r['Set-Cookie']).not_to be_nil
+    expect(r['Set-Cookie']).not_to match(%r{domain=127.0.0.1;})
+  end
+
+
+  it 'warns on an unknown cipher' do
+    sess = Rack::Session::EncryptedCookie.new(nil, { cipher: 'xxx' })
     sess[:test] = 1
     sess.send(:save_session, NOT_FOUND)
     expect(@warnings.length).to eq(1)
@@ -113,7 +145,7 @@ describe Rack::Session::EncryptedCookie do
     cookie = 'rack.session=' +
              'e7eibXYTy%2BSTQJLx1234qXK1QT2VL5mZZZZaa1KYzd8%3D; ' +
              'domain=localhost; path=/; HttpOnly'
-    response(app, { 'HTTP_COOKIE' => cookie })
+    response(app, 'localhost', { 'HTTP_COOKIE' => cookie })
   end
 end
 
